@@ -103,10 +103,10 @@ def make_request_with_header(url, header):
 def make_request_with_header_and_path(url, header):
     try:
         url = url.rstrip("/")
-        path = header.values()[0]
+        path = list(header.values())[0]
         response = requests.get(f"{url}/{path}", headers=header, timeout=5, allow_redirects=False, verify=False)
         length = len(response.content)
-        return str(f"[*] {response.status_code} : {length} : {url} : {header}")
+        return str(f"[*] {response.status_code} : {length} : {url}/{path} : {header}")
     except Exception as e:
         print(e)
 
