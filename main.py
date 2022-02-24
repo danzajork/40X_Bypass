@@ -56,7 +56,8 @@ def create_headers():
     values = ["localhost", "localhost:80", "localhost:443", 
             "127.0.0.1", "127.0.0.1:80", "127.0.0.1:443", 
             "10.0.0.0", "10.0.0.1", "172.16.0.0", 
-            "172.16.0.1", "192.168.1.0", "192.168.1.1"]
+            "172.16.0.1", "192.168.1.0", "192.168.1.1", 
+            "::1"]
     
     for header in bypass_headers:
         for value in values:
@@ -138,7 +139,6 @@ def check_url_for_header(headers, url, num_threads = 20):
                 raise
     return results
     
-
 def check_url_for_header_and_path(headers, url, num_threads = 20):
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
@@ -152,6 +152,27 @@ def check_url_for_header_and_path(headers, url, num_threads = 20):
                 print(f"{e}")
                 raise
     return results
+
+def check_url_for_post(url):
+    try:
+        url = url.rstrip("/")
+        response = requests.post(f"{url}/", timeout=5, allow_redirects=False, verify=False)
+        length = len(response.content)
+        return str(f"[*] {response.status_code} : {length} : POST {url}/ ")
+    except Exception as e:
+        print(e)
+
+def check_url_for_trace(url):
+    try:
+        url = url.rstrip("/")
+        request = requests.Request("TRACE", f"{url}/")
+        r = request.prepare()
+        session = requests.Session()
+        response = session.send(r, timeout=5, allow_redirects=False, verify=False)
+        length = len(response.content)
+        return str(f"[*] {response.status_code} : {length} : TRACE {url}/ ")
+    except Exception as e:
+        print(e)   
 
 def scan(url, words, thread_default):
     final_paths = build_final_paths(words)
@@ -170,6 +191,12 @@ def scan(url, words, thread_default):
     results = check_url_for_header_and_path(final_headers_with_paths, url, thread_default)
     for response in results:
         final.append(response)
+
+    response = check_url_for_post(url)
+    final.append(response)
+
+    response = check_url_for_trace(url)
+    final.append(response)
 
     for final_resp in final:
         print(final_resp)
@@ -209,6 +236,7 @@ def main():
                 words = [line.rstrip() for line in file]
 
     scan(args.url, words, thread_default)
+
 
 if __name__ == "__main__":
     main()
