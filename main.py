@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import json
 import sys
 import os
 import concurrent.futures
@@ -88,7 +89,13 @@ def make_request_with_path(url, path):
         url = url.rstrip("/")
         response = requests.get(f"{url}/{path}", timeout=5, allow_redirects=False, verify=False)
         length = len(response.content)
-        return str(f"[*] {response.status_code} : {length} : {url}/{path}")
+        
+        return {
+            "status_code": response.status_code,
+            "length": length,
+            "url": f"{url}/{path}",
+            "bypass": path
+        }
     except Exception as e:
         print(e)
 
@@ -97,7 +104,13 @@ def make_request_with_header(url, header):
         url = url.rstrip("/")
         response = requests.get(url, headers=header, timeout=5, allow_redirects=False, verify=False)
         length = len(response.content)
-        return str(f"[*] {response.status_code} : {length} : {url} : {header}")
+
+        return {
+            "status_code": response.status_code,
+            "length": length,
+            "url": url,
+            "bypass": header
+        }
     except Exception as e:
         print(e)
 
@@ -107,7 +120,13 @@ def make_request_with_header_and_path(url, header):
         path = list(header.values())[0]
         response = requests.get(f"{url}/{path}", headers=header, timeout=5, allow_redirects=False, verify=False)
         length = len(response.content)
-        return str(f"[*] {response.status_code} : {length} : {url}/{path} : {header}")
+       
+        return {
+            "status_code": response.status_code,
+            "length": length,
+            "url": f"{url}/{path}",
+            "bypass": header
+        }
     except Exception as e:
         print(e)
 
@@ -158,7 +177,13 @@ def check_url_for_post(url):
         url = url.rstrip("/")
         response = requests.post(f"{url}/", timeout=5, allow_redirects=False, verify=False)
         length = len(response.content)
-        return str(f"[*] {response.status_code} : {length} : POST {url}/ ")
+
+        return {
+            "status_code": response.status_code,
+            "length": length,
+            "url": url,
+            "bypass": f"POST {url}/"
+        }
     except Exception as e:
         print(e)
 
@@ -170,11 +195,17 @@ def check_url_for_trace(url):
         session = requests.Session()
         response = session.send(r, timeout=5, allow_redirects=False, verify=False)
         length = len(response.content)
-        return str(f"[*] {response.status_code} : {length} : TRACE {url}/ ")
+
+        return {
+            "status_code": response.status_code,
+            "length": length,
+            "url": url,
+            "bypass": f"TRACE {url}/"
+        }
     except Exception as e:
         print(e)   
 
-def scan(url, words, thread_default):
+def scan(url, words, thread_default, out):
     final_paths = build_final_paths(words)
     final_headers = create_headers()
     final_headers_with_paths = build_final_headers_with_paths(words)
@@ -198,8 +229,20 @@ def scan(url, words, thread_default):
     response = check_url_for_trace(url)
     final.append(response)
 
-    for final_resp in final:
-        print(final_resp)
+    if out:
+        with open(out, "w") as file:
+            for final_resp in final:
+                json_obj = json.dumps(final_resp)
+                file.write(f"{json_obj}\n")
+    else:
+        for final_resp in final:
+
+            status_code = final_resp["status_code"]
+            length = final_resp["length"]
+            url = final_resp["url"]
+            bypass = final_resp["bypass"]
+
+            print(f"[*] {status_code} : {length} : {url} : {bypass}")
 
 def main():
     """
@@ -209,7 +252,8 @@ def main():
     parser.add_argument("-u", "--url", dest="url", help="url to target")
     parser.add_argument("-w", "--word-list", dest="word_list", help="custom word list")
     parser.add_argument("-t", "--threads", dest="threads", help="number of threads")
-
+    parser.add_argument("-o", "--out", dest="output", help="file to output json")
+    
     args = parser.parse_args()
 
     if len(sys.argv) < 2:
@@ -235,7 +279,7 @@ def main():
             with open(BUILT_IN_WORD_LIST, "r") as file:
                 words = [line.rstrip() for line in file]
 
-    scan(args.url, words, thread_default)
+    scan(args.url, words, thread_default, args.output)
 
 
 if __name__ == "__main__":
