@@ -270,7 +270,7 @@ def main():
             exit(1)
         else:
             with open(args.word_list, "r") as file:
-                words = file.readlines()
+                words = [line.rstrip() for line in file]
     else:
         if not os.path.exists(BUILT_IN_WORD_LIST):
             print("[!] No word list specified.")
